@@ -1,5 +1,12 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
-import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+//import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import 'package:provider/provider.dart';
+
+import 'models/data.dart';
+//import 'package:flutter_application_2/pages/home.dart';
+
 void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
@@ -12,11 +19,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: _title,
-      home: const MyStatefulWidget(),
+      home:  const MyStatefulWidget(),
       theme: ThemeData.light(),
     );
   }
 }
+
 
 class MyStatefulWidget extends StatefulWidget {
   const MyStatefulWidget({Key? key}) : super(key: key);
@@ -28,11 +36,12 @@ class MyStatefulWidget extends StatefulWidget {
 class _MyStatefulWidgetState extends State<MyStatefulWidget> {
   int _selectedIndex = 0;
 
-  static const List<Widget> pages = <Widget>[
+  static List<Widget> pages = <Widget>[
     HomePage(),
-    Text(
+    SearchPage(),
+    /*Text(
       'Search',
-    ),
+    ),*/
     AccountPage(),
   ];
 
@@ -128,11 +137,127 @@ class AccountPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: Text("ACCOUNT PAGE"),
+    return ChangeNotifierProvider<Data>(
+      create: (context) => Data(),
+      child: Column(
+        children: [
+          Text("Account page", style: TextStyle(fontSize: 25),),
+          PersonalData(),
+        ],
+      ),
     );
   }
 }
+
+class PersonalData extends StatelessWidget {
+  const PersonalData({ Key? key }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        children: [
+          Text("Name: Vitaliy", style: TextStyle(fontSize: 20)),
+          Text("Surname: Yezghor", style: TextStyle(fontSize: 20)),
+          PersonAge(),
+        ],
+      ),
+    );
+  }
+}
+
+class PersonAge extends StatelessWidget {
+  const PersonAge({ Key? key }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [ 
+        Consumer<Data>(
+          builder: (context, Data, child) {
+            return Text("Age ${Data.getAge}", style: TextStyle(fontSize: 40));
+          },
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Provider.of<Data>(context, listen: false).incrementUsersAge();
+          },
+          child: Text("Add"),
+        )
+      ]
+    );
+  }
+}
+
+class SearchPage extends StatefulWidget {
+  SearchPage({ Key? key }) : super(key: key);
+  @override
+  _SearchPageState createState() => _SearchPageState();
+}
+
+class _SearchPageState extends State<SearchPage> {
+  //State
+  String dataSearch = "Search Vitalii Yezghor";
+
+  void _onChangeState(newDataSearch) {
+    setState(() {
+      dataSearch = newDataSearch;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text("Search Page"),
+        BoxSearch(data: dataSearch, onChange: _onChangeState,),
+      ],
+    );
+  }
+}
+
+class BoxSearch extends StatelessWidget {
+  final String data;
+  final Function onChange;  
+  BoxSearch({ Key? key, required this.data, required this.onChange}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Text("Box search:", style: TextStyle(fontWeight: FontWeight.bold),),
+        MyTextField(onChange: onChange,),
+        RecentlySearched(data: data,),
+      ],
+    );
+  }
+}
+
+class RecentlySearched extends StatelessWidget {
+  final String data;
+  RecentlySearched({ Key? key, required this.data }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: Text(data, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),),
+    );
+  }
+}
+
+class MyTextField extends StatelessWidget {
+  final Function onChange;
+  MyTextField({ Key? key, required this.onChange }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      onChanged: (newDataSearch) => onChange(newDataSearch),
+    );
+  }
+}
+
+
 
 class InstagramBar extends StatelessWidget {
   const InstagramBar({Key? key}) : super(key: key);
@@ -157,14 +282,17 @@ class InstagramBar extends StatelessWidget {
 
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
-
+  final String data = "Data TI-82 Vitalii Yezghor";
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        StoriesWidget(),
-        PostsWidget(),
-      ],
+    return Provider<String>(
+      create: (context) => data,
+      child: Column(
+        children: [
+          StoriesWidget(),
+          PostsWidget(),
+        ],
+      ),
     );
   }
 }
@@ -283,7 +411,7 @@ class PostWidget extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(width: 5),
-                  const Text("Cool!")
+                  Text(Provider.of<String>(context)) // context.watch<String>()
                 ],
               ),
             )
