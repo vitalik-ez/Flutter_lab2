@@ -5,12 +5,71 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'models/data.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 //import 'package:flutter_application_2/pages/home.dart';
 
-void main() => runApp(const MyApp());
+class Album {
+  final int userId;
+  final int id;
+  final String title;
+
+  Album({
+    required this.userId,
+    required this.id,
+    required this.title,
+  });
+
+  factory Album.fromJson(Map<String, dynamic> json) {
+    return Album(
+      userId: json['userId'],
+      id: json['id'],
+      title: json['title'],
+    );
+  }
+}
+
+Future<Album> fetchAlbum() async {
+  final response = await http.get(Uri.parse('https://jsonplaceholder.typicode.com/albums/1'));
+  if (response.statusCode == 200) {
+    return Album.fromJson(jsonDecode(response.body));
+  } else {
+    throw Exception("Failed to load album");
+  }
+}
+
+Future<void> RequestToDataBase() async {
+  print("Start RequestToDataBase");
+  String row = await getDataFromDB();
+  print("Receive data from database: $row");
+}
+
+Future<String> getDataFromDB() {
+  return Future.delayed(Duration(seconds: 3), () => "Vitalii Yezghor TI-82");
+}
+
+void main() async {
+  //future/then
+  Future<String> future = Future.delayed(Duration(seconds: 2), () => "Request to the Data base");
+  future.then((value) {
+    print("Value = $value");
+  });
+
+  // async/await
+  RequestToDataBase();
+
+  Brightness brightness;
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  brightness = (prefs.getBool("isDark") ?? false) ? Brightness.dark : Brightness.light;
+  print("Run the app");
+  runApp(MyApp(brightness: brightness));
+}
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  Brightness? brightness;
+
+  MyApp({Key? key, this.brightness}) : super(key: key);
 
   static const String _title = 'Flutter Instagram Clone';
 
@@ -19,12 +78,14 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: _title,
-      home:  const MyStatefulWidget(),
-      theme: ThemeData.light(),
+      home: const MyStatefulWidget(),
+      theme: new ThemeData(
+        primarySwatch: Colors.blue,
+        brightness: brightness,
+      ),
     );
   }
 }
-
 
 class MyStatefulWidget extends StatefulWidget {
   const MyStatefulWidget({Key? key}) : super(key: key);
@@ -69,15 +130,15 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
         title: const InstagramBar(),
         iconTheme: IconThemeData(color: Colors.green),
       ),
-      body: pages[
-          _selectedIndex], //Center(child: pages.elementAt(_selectedIndex),),
-      bottomNavigationBar: BottomNavigationBar(/*CurvedNavigationBar(
+      body: pages[_selectedIndex], //Center(child: pages.elementAt(_selectedIndex),),
+      bottomNavigationBar: BottomNavigationBar(
+        /*CurvedNavigationBar(
         items: const [
           Icon(Icons.home),
           Icon(Icons.search),
           Icon(Icons.person),
         ],*/
-        
+
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
@@ -85,7 +146,6 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.amber,
-        
         onTap: _onItemTapped,
       ),
       floatingActionButton: FloatingActionButton(
@@ -141,7 +201,10 @@ class AccountPage extends StatelessWidget {
       create: (context) => Data(),
       child: Column(
         children: [
-          Text("Account page", style: TextStyle(fontSize: 25),),
+          Text(
+            "Account page",
+            style: TextStyle(fontSize: 25),
+          ),
           PersonalData(),
         ],
       ),
@@ -150,7 +213,7 @@ class AccountPage extends StatelessWidget {
 }
 
 class PersonalData extends StatelessWidget {
-  const PersonalData({ Key? key }) : super(key: key);
+  const PersonalData({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -167,30 +230,28 @@ class PersonalData extends StatelessWidget {
 }
 
 class PersonAge extends StatelessWidget {
-  const PersonAge({ Key? key }) : super(key: key);
+  const PersonAge({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [ 
-        Consumer<Data>(
-          builder: (context, Data, child) {
-            return Text("Age ${Data.getAge}", style: TextStyle(fontSize: 40));
-          },
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Provider.of<Data>(context, listen: false).incrementUsersAge();
-          },
-          child: Text("Add"),
-        )
-      ]
-    );
+    return Column(children: [
+      Consumer<Data>(
+        builder: (context, Data, child) {
+          return Text("Age ${Data.getAge}", style: TextStyle(fontSize: 40));
+        },
+      ),
+      ElevatedButton(
+        onPressed: () {
+          Provider.of<Data>(context, listen: false).incrementUsersAge();
+        },
+        child: Text("Add"),
+      )
+    ]);
   }
 }
 
 class SearchPage extends StatefulWidget {
-  SearchPage({ Key? key }) : super(key: key);
+  SearchPage({Key? key}) : super(key: key);
   @override
   _SearchPageState createState() => _SearchPageState();
 }
@@ -198,6 +259,13 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   //State
   String dataSearch = "Search Vitalii Yezghor";
+  late Future<Album> futureAlbum;
+
+  @override
+  void initState() {
+    super.initState();
+    futureAlbum = fetchAlbum();
+  }
 
   void _onChangeState(newDataSearch) {
     setState(() {
@@ -210,7 +278,24 @@ class _SearchPageState extends State<SearchPage> {
     return Column(
       children: [
         Text("Search Page"),
-        BoxSearch(data: dataSearch, onChange: _onChangeState,),
+        BoxSearch(
+          data: dataSearch,
+          onChange: _onChangeState,
+        ),
+        FutureBuilder<Album>(
+          future: futureAlbum,
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return Text(
+                snapshot.data!.title,
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),
+              );
+            } else if (snapshot.hasError) {
+              return Text("${snapshot.error}");
+            }
+            return const CircularProgressIndicator();
+          },
+        )
       ],
     );
   }
@@ -218,16 +303,23 @@ class _SearchPageState extends State<SearchPage> {
 
 class BoxSearch extends StatelessWidget {
   final String data;
-  final Function onChange;  
-  BoxSearch({ Key? key, required this.data, required this.onChange}) : super(key: key);
+  final Function onChange;
+  BoxSearch({Key? key, required this.data, required this.onChange}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text("Box search:", style: TextStyle(fontWeight: FontWeight.bold),),
-        MyTextField(onChange: onChange,),
-        RecentlySearched(data: data,),
+        const Text(
+          "Box search:",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        MyTextField(
+          onChange: onChange,
+        ),
+        RecentlySearched(
+          data: data,
+        ),
       ],
     );
   }
@@ -235,19 +327,22 @@ class BoxSearch extends StatelessWidget {
 
 class RecentlySearched extends StatelessWidget {
   final String data;
-  RecentlySearched({ Key? key, required this.data }) : super(key: key);
+  RecentlySearched({Key? key, required this.data}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      child: Text(data, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),),
+      child: Text(
+        data,
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),
+      ),
     );
   }
 }
 
 class MyTextField extends StatelessWidget {
   final Function onChange;
-  MyTextField({ Key? key, required this.onChange }) : super(key: key);
+  MyTextField({Key? key, required this.onChange}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -256,8 +351,6 @@ class MyTextField extends StatelessWidget {
     );
   }
 }
-
-
 
 class InstagramBar extends StatelessWidget {
   const InstagramBar({Key? key}) : super(key: key);
@@ -299,7 +392,13 @@ class HomePage extends StatelessWidget {
 
 class PostsWidget extends StatelessWidget {
   PostsWidget({Key? key}) : super(key: key);
-  final List<String> followers = ["Vitaliy", "Ann", "Mark", "Joy", "AnnXX"];
+  final List<String> followers = [
+    "Vitaliy",
+    "Ann",
+    "Mark",
+    "Joy",
+    "AnnXX"
+  ];
   @override
   Widget build(BuildContext context) {
     return Expanded(
@@ -323,12 +422,7 @@ class PostWidget extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(10),
-              topRight: Radius.circular(10),
-              bottomLeft: Radius.circular(10),
-              bottomRight: Radius.circular(10)
-          ),
+          borderRadius: const BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10), bottomLeft: Radius.circular(10), bottomRight: Radius.circular(10)),
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(0.5),
@@ -379,7 +473,6 @@ class PostWidget extends StatelessWidget {
               child: Container(
                 height: 250,
                 color: Colors.yellow,
-
               ),
             ),
             // Like
@@ -424,7 +517,13 @@ class PostWidget extends StatelessWidget {
 
 class StoriesWidget extends StatelessWidget {
   StoriesWidget({Key? key}) : super(key: key);
-  final List<String> subscribers = ["Vitaliy", "Ann", "Mark", "Joy", "AnnXX"];
+  final List<String> subscribers = [
+    "Vitaliy",
+    "Ann",
+    "Mark",
+    "Joy",
+    "AnnXX"
+  ];
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -448,13 +547,7 @@ class StoryWidget extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       child: Column(
         children: [
-          Container(
-              width: 65,
-              height: 65,
-              decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.amber,
-                  border: Border.all(width: 2, color: Colors.red))),
+          Container(width: 65, height: 65, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.amber, border: Border.all(width: 2, color: Colors.red))),
           Text(userName),
         ],
       ),
