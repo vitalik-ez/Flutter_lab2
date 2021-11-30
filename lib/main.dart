@@ -8,6 +8,7 @@ import 'models/data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:simple_animations/simple_animations.dart';
 //import 'package:flutter_application_2/pages/home.dart';
 
 class Album {
@@ -78,11 +79,16 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: _title,
-      home: const MyStatefulWidget(),
+      //home: const MyStatefulWidget(),
       theme: new ThemeData(
         primarySwatch: Colors.blue,
         brightness: brightness,
-      ),
+      ) /*);*/,
+      initialRoute: '/',
+      routes: {
+        '/': (BuildContext context) => MyStatefulWidget(),
+        '/friends-list': (BuildContext context) => ListFriends(group: "Favourite")
+      },
     );
   }
 }
@@ -213,8 +219,8 @@ class AccountPage extends StatelessWidget {
 }
 
 class PersonalData extends StatelessWidget {
-  const PersonalData({Key? key}) : super(key: key);
-
+  PersonalData({Key? key}) : super(key: key);
+  dynamic result = "";
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -223,9 +229,96 @@ class PersonalData extends StatelessWidget {
           Text("Name: Vitaliy", style: TextStyle(fontSize: 20)),
           Text("Surname: Yezghor", style: TextStyle(fontSize: 20)),
           PersonAge(),
+          RaisedButton(
+              onPressed: () /*async*/ {
+                //result = await Navigator.push(context, MaterialPageRoute(builder: (context) => ListFriends(group: "Favourite")));
+                //print("!!! RETURN $result");
+                Navigator.pushNamed(context, '/friends-list');
+              },
+              child: Text("Friends List $result", style: TextStyle(fontSize: 15))),
+          Text("Animation", style: TextStyle(fontSize: 20)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: <Widget>[
+              Bar(height: 0.3, label: "2013"),
+              Bar(height: 0.5, label: "2014"),
+              Bar(height: 0.7, label: "2015"),
+            ],
+          )
+          //MyHomePage(),
         ],
       ),
     );
+  }
+}
+
+class Bar extends StatefulWidget {
+  final double height;
+  final String label;
+
+  const Bar({Key? key, required this.height, required this.label}) : super(key: key);
+  @override
+  _MyHomePageState createState() => _MyHomePageState(this.height, this.label);
+}
+
+class _MyHomePageState extends State<Bar> with SingleTickerProviderStateMixin {
+  late AnimationController controller;
+  late Animation colorAnimation;
+  late Animation sizeAnimation;
+  final double height;
+  final String label;
+
+  final int _baseDurationMs = 1000;
+  final double _maxElementHeight = 100;
+
+  _MyHomePageState(this.height, this.label);
+  @override
+  void initState() {
+    super.initState();
+    controller = AnimationController(vsync: this, duration: Duration(seconds: 2));
+
+    colorAnimation = ColorTween(begin: Colors.blue, end: Colors.yellow).animate(controller);
+    sizeAnimation = Tween<double>(begin: 0.0, end: height).animate(controller);
+
+    controller.addListener(() {
+      setState(() {});
+    });
+
+    controller.repeat();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          height: sizeAnimation.value * _maxElementHeight, //(1 - sizeAnimation.value) * _maxElementHeight, //sizeAnimation.value,
+          width: 40, //sizeAnimation.value,
+          color: colorAnimation.value,
+        ),
+        Text(label),
+      ],
+    );
+  }
+}
+
+class ListFriends extends StatelessWidget {
+  String group;
+  final dynamic returnValue = "Return value using pop";
+  ListFriends({Key? key, required this.group}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        appBar: AppBar(title: Text("Friends List $group")),
+        body: Column(children: [
+          Text("Vitalii Yezghor", style: TextStyle(fontSize: 15)),
+          RaisedButton(
+              onPressed: () {
+                Navigator.pop(context, returnValue);
+              },
+              child: Text('Назад')),
+        ]));
   }
 }
 
